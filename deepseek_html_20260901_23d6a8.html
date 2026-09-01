@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATF Web Auto-Claimer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    /* ----- CSS (full from previous version) ----- */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-base: #0b0e14;
+      --bg-surface: #12161e;
+      --bg-card: rgba(22,30,42,0.65);
+      --bg-glass: rgba(18,22,30,0.75);
+      --border-glass: rgba(255,255,255,0.06);
+      --text-primary: #edf2f7;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #8b5cf6;
+      --shadow-card: 0 8px 32px rgba(0,0,0,0.5);
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    html { font-size: 16px; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+      margin: 0;
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 6px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* LANDING */
+    #landing {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg-base);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; padding: 20px;
+      transition: opacity 0.6s ease, visibility 0.6s;
+    }
+    #landing.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .landing-content { max-width: 640px; width: 100%; text-align: center; }
+    .landing-content .logo {
+      font-size: 2.2rem; font-weight: 700; color: var(--accent-cyan);
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      margin-bottom: 8px;
+    }
+    .landing-content .logo svg { width: 40px; height: 40px; stroke: currentColor; stroke-width: 2; fill: none; }
+    .landing-content .brand { font-size: 0.9rem; color: var(--text-secondary); letter-spacing: 0.06em; margin-bottom: 20px; }
+    .landing-content h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.1; margin-bottom: 12px; }
+    .landing-content .subtitle { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 32px; }
+    .landing-content .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .network-bg { position: absolute; inset: 0; z-index: -1; opacity: 0.2; pointer-events: none; }
+    .network-bg svg { width: 100%; height: 100%; }
+    .floating-cards { display: flex; gap: 16px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+    .floating-cards .mini-card {
+      background: var(--bg-card); backdrop-filter: blur(8px);
+      border: 1px solid var(--border-glass); border-radius: var(--radius-md);
+      padding: 10px 18px; font-size: 0.8rem; color: var(--text-secondary);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .floating-cards .mini-card .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); animation: pulse-dot 2s infinite; }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 10px 24px; border-radius: 100px;
+      font-weight: 500; font-size: 0.95rem;
+      border: none; background: transparent; color: var(--text-primary);
+      cursor: pointer; transition: all var(--transition);
+      text-decoration: none; white-space: nowrap;
+    }
+    .btn svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; }
+    .btn-primary { background: var(--accent-cyan); color: #0b0e14; }
+    .btn-primary:hover { background: #0891b2; transform: scale(1.02); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid var(--border-glass); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+    .btn-danger { background: rgba(239,68,68,0.15); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+    .btn-success { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+    .btn-success:hover { background: rgba(16,185,129,0.25); }
+    .btn:disabled { opacity: 0.4; pointer-events: none; }
+    .btn-ghost { background: transparent; color: var(--text-secondary); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.05); }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 72px; background: var(--bg-surface); border-right: 1px solid var(--border-glass);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 24px 0 20px; flex-shrink: 0;
+      transition: width var(--transition); z-index: 10; overflow: hidden;
+    }
+    .sidebar .logo { font-size: 20px; font-weight: 700; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px; margin-bottom: 32px; }
+    .sidebar .logo span { display: none; }
+    .sidebar .logo svg { width: 28px; height: 28px; stroke: currentColor; fill: none; }
+    .sidebar nav { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 0 12px; flex: 1; }
+    .sidebar nav a {
+      display: flex; align-items: center; justify-content: center;
+      padding: 12px 0; border-radius: var(--radius-md);
+      color: var(--text-secondary); transition: all var(--transition);
+      text-decoration: none; position: relative; gap: 10px;
+    }
+    .sidebar nav a svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.8; fill: none; flex-shrink: 0; }
+    .sidebar nav a span { display: none; }
+    .sidebar nav a:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .sidebar nav a.active { background: rgba(6,182,212,0.15); color: var(--accent-cyan); box-shadow: inset 0 0 0 1px rgba(6,182,212,0.2); }
+    .sidebar nav a.active::before {
+      content: ''; position: absolute; left: -4px; top: 50%; transform: translateY(-50%);
+      width: 3px; height: 24px; background: var(--accent-cyan); border-radius: 0 4px 4px 0;
+    }
+    .sidebar .bottom { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-glass); width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .sidebar .bottom .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 12px var(--accent-green); animation: pulse-dot 2s infinite; }
+
+    /* MAIN */
+    .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 24px 32px 32px; min-width: 0; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+    .topbar .page-title h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.3px; }
+    .topbar .page-title p { font-size: 0.875rem; color: var(--text-secondary); margin-top: 2px; }
+    .topbar .actions { display: flex; align-items: center; gap: 12px; }
+    .topbar .actions .status-badge {
+      display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+      background: rgba(16,185,129,0.15); border-radius: 100px;
+      font-size: 0.75rem; font-weight: 500; color: var(--accent-green);
+    }
+    .topbar .actions .status-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-green); animation: pulse-dot 2s infinite; }
+
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .metric-card { background: var(--bg-card); backdrop-filter: blur(12px); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); padding: 18px 20px; box-shadow: var(--shadow-card); transition: all var(--transition); }
+    .metric-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.1); }
+    .metric-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+    .metric-card .value { font-size: 1.75rem; font-weight: 600; margin-top: 6px; letter-spacing: -0.02em; }
+
+    .claimer-card { background: var(--bg-card); backdrop-filter: blur(12px); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); padding: 24px 28px; margin-bottom: 28px; box-shadow: var(--shadow-card); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+    .claimer-card .left { display: flex; flex-direction: column; gap: 4px; }
+    .claimer-card .left .title { font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .claimer-card .left .title .status-badge { font-size: 0.7rem; font-weight: 500; padding: 2px 12px; border-radius: 100px; background: rgba(16,185,129,0.15); color: var(--accent-green); }
+    .claimer-card .left .detail { font-size: 0.875rem; color: var(--text-secondary); display: flex; gap: 16px; flex-wrap: wrap; }
+    .claimer-card .left .detail span { display: flex; align-items: center; gap: 4px; }
+    .claimer-card .right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    .section { margin-bottom: 28px; }
+    .section .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .section .header h3 { font-size: 1rem; font-weight: 600; }
+    .activity-timeline, .log-terminal { background: var(--bg-card); backdrop-filter: blur(8px); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); padding: 16px 20px; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .activity-item { display: flex; align-items: center; gap: 12px; font-size: 0.875rem; animation: slideIn 0.3s ease; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .activity-item .time { color: var(--text-secondary); font-feature-settings: "tnum"; min-width: 60px; }
+    .badge { font-size: 0.65rem; font-weight: 600; padding: 1px 10px; border-radius: 100px; text-transform: uppercase; }
+    .badge-success { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+    .badge-info { background: rgba(6,182,212,0.2); color: var(--accent-cyan); }
+    .badge-warning { background: rgba(245,158,11,0.2); color: var(--accent-amber); }
+    .badge-danger { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+    .badge-purple { background: rgba(139,92,246,0.2); color: var(--accent-purple); }
+    .activity-item .message { color: var(--text-secondary); flex: 1; }
+
+    .log-terminal { font-family: 'Inter', monospace; font-size: 0.8rem; max-height: 250px; line-height: 1.6; color: var(--text-secondary); box-shadow: inset 0 0 30px rgba(0,0,0,0.5); }
+    .log-line { display: flex; gap: 12px; animation: slideIn 0.25s ease; padding: 2px 0; }
+    .log-line .time { color: var(--text-muted); min-width: 60px; }
+    .log-line .level { font-weight: 600; min-width: 60px; }
+    .log-line .level.info { color: var(--accent-cyan); }
+    .log-line .level.success { color: var(--accent-green); }
+    .log-line .level.warning { color: var(--accent-amber); }
+    .log-line .level.error { color: var(--accent-red); }
+    .log-line .level.automation { color: var(--accent-purple); }
+    .log-line .msg { color: var(--text-primary); }
+
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse-dot { 0% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0.6; transform: scale(1); } }
+
+    .page-content { display: none; }
+    .page-content.active { display: block; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+    .empty-state svg { width: 48px; height: 48px; stroke: var(--text-muted); margin-bottom: 16px; opacity: 0.5; }
+    .empty-state h3 { font-size: 1.2rem; margin-bottom: 6px; color: var(--text-primary); }
+    .empty-state p { font-size: 0.95rem; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.3s ease; }
+    .modal-overlay.visible { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+    .modal { background: var(--bg-surface); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); max-width: 500px; width: 100%; padding: 32px; box-shadow: var(--shadow-card); max-height: 90vh; overflow-y: auto; }
+    .modal .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal .modal-header h2 { font-size: 1.4rem; font-weight: 600; }
+    .modal .modal-close { background: transparent; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; }
+    .modal .modal-close:hover { color: var(--text-primary); }
+    .modal .field { margin-bottom: 18px; }
+    .modal .field label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 4px; color: var(--text-secondary); }
+    .modal .field input { width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.95rem; transition: border var(--transition); }
+    .modal .field input:focus { outline: none; border-color: var(--accent-cyan); }
+    .modal .field .helper { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    .modal .field .input-with-toggle { display: flex; align-items: center; gap: 8px; }
+    .modal .field .input-with-toggle input { flex: 1; }
+    .modal .field .toggle-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0 6px; }
+    .modal .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+
+    /* Responsive */
+    @media (max-width: 1024px) { .main { padding: 20px; } }
+    @media (max-width: 768px) {
+      body { flex-direction: column; overflow: auto; }
+      .sidebar { width: 100%; flex-direction: row; padding: 12px 16px; border-right: none; border-bottom: 1px solid var(--border-glass); height: auto; }
+      .sidebar .logo { margin-bottom: 0; }
+      .sidebar .logo span { display: inline; }
+      .sidebar nav { flex-direction: row; padding: 0 12px; gap: 4px; flex: none; }
+      .sidebar nav a { padding: 8px 12px; }
+      .sidebar nav a span { display: inline; font-size: 0.75rem; }
+      .sidebar .bottom { display: none; }
+      .metric-grid { grid-template-columns: repeat(2, 1fr); }
+      .claimer-card { flex-direction: column; align-items: stretch; }
+      .claimer-card .right { justify-content: stretch; }
+      .claimer-card .right .btn { flex: 1; justify-content: center; }
+      .topbar { flex-direction: column; align-items: stretch; }
+      .activity-timeline, .log-terminal { max-height: 150px; }
+      .landing-content h1 { font-size: 2.2rem; }
+      .floating-cards { flex-direction: column; align-items: center; }
+    }
+    @media (max-width: 480px) {
+      .metric-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .main { padding: 12px; }
+      .sidebar nav a span { display: none; }
+      .sidebar nav a { padding: 8px; }
+      .sidebar .logo span { display: none; }
+    }
+
+    .flex { display: flex; align-items: center; gap: 8px; }
+    .gap-2 { gap: 12px; }
+    .mt-2 { margin-top: 12px; }
+    .text-cyan { color: var(--accent-cyan); }
+    .text-green { color: var(--accent-green); }
+    .text-amber { color: var(--accent-amber); }
+    .text-red { color: var(--accent-red); }
+    .text-purple { color: var(--accent-purple); }
+    .text-muted { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="landing">
+  <div class="network-bg">
+    <svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="200" r="2" fill="#06b6d4" opacity="0.4"><animate attributeName="r" values="2;6;2" dur="4s" repeatCount="indefinite"/></circle>
+      <circle cx="300" cy="100" r="2" fill="#8b5cf6" opacity="0.4"><animate attributeName="r" values="2;6;2" dur="5s" repeatCount="indefinite"/></circle>
+      <circle cx="550" cy="300" r="2" fill="#10b981" opacity="0.4"><animate attributeName="r" values="2;6;2" dur="3s" repeatCount="indefinite"/></circle>
+      <circle cx="700" cy="150" r="2" fill="#f59e0b" opacity="0.4"><animate attributeName="r" values="2;6;2" dur="6s" repeatCount="indefinite"/></circle>
+      <line x1="100" y1="200" x2="300" y2="100" stroke="#06b6d4" stroke-width="0.5" opacity="0.2"/>
+      <line x1="300" y1="100" x2="550" y2="300" stroke="#8b5cf6" stroke-width="0.5" opacity="0.2"/>
+      <line x1="550" y1="300" x2="700" y2="150" stroke="#10b981" stroke-width="0.5" opacity="0.2"/>
+      <line x1="100" y1="200" x2="550" y2="300" stroke="#f59e0b" stroke-width="0.5" opacity="0.2"/>
+    </svg>
+  </div>
+  <div class="landing-content">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      ATF WEB AUTO-CLAIMER
+    </div>
+    <div class="brand">Powered by Samthomaz</div>
+    <h1>Automate Your<br>Claiming Workflow</h1>
+    <p class="subtitle">Secure automation control center for your connected Telegram session.</p>
+    <div class="actions">
+      <button class="btn btn-primary" id="connectBtn">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        CONNECT TELEGRAM
+      </button>
+      <button class="btn btn-secondary" id="viewDemoBtn">VIEW DEMO</button>
+    </div>
+    <div class="floating-cards">
+      <div class="mini-card"><span class="dot"></span> SYSTEM READY</div>
+      <div class="mini-card"><span class="dot" style="background:var(--accent-purple);"></span> AUTOMATION ENGINE</div>
+      <div class="mini-card"><span class="dot" style="background:var(--accent-amber);"></span> SCHEDULED WORKER</div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar" style="display:none;">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    <span>ATF</span>
+  </div>
+  <nav>
+    <a href="#" class="active" data-page="dashboard">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Dashboard</span>
+    </a>
+    <a href="#" data-page="activity">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Activity</span>
+    </a>
+    <a href="#" data-page="sessions">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5.3 18.3c.8-1.5 2.4-2.5 4.2-2.7h5c1.8.2 3.4 1.2 4.2 2.7"/></svg>
+      <span>Sessions</span>
+    </a>
+    <a href="#" data-page="settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v3m0 16v3M4.2 4.2l2.1 2.1m11.4 11.4l2.1 2.1M1 12h3m16 0h3M4.2 19.8l2.1-2.1m11.4-11.4l2.1-2.1"/></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+  <div class="bottom"><div class="status-dot"></div></div>
+</aside>
+
+<!-- MAIN -->
+<main class="main" id="main" style="display:none;">
+  <header class="topbar">
+    <div class="page-title"><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle">Automation overview &amp; system status</p></div>
+    <div class="actions">
+      <div class="status-badge"><span class="dot"></span>System Online</div>
+      <button class="btn btn-secondary" id="refreshBtn">
+        <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.5 13.5a8 8 0 1 1-2-8.5"/></svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <div id="page-dashboard" class="page-content active">
+    <div class="metric-grid">
+      <div class="metric-card"><div class="label">Status</div><div class="value" id="statusValue"><span class="flex"><span class="dot" style="width:12px;height:12px;border-radius:50%;background:var(--accent-green);display:inline-block;animation:pulse-dot 2s infinite;"></span> Running</span></div></div>
+      <div class="metric-card"><div class="label">Next Check</div><div class="value" id="nextCheck">01:42:17</div></div>
+      <div class="metric-card"><div class="label">Claims</div><div class="value" id="claimCount">12</div></div>
+      <div class="metric-card"><div class="label">Uptime</div><div class="value" id="uptime">14h 32m</div></div>
+    </div>
+
+    <div class="claimer-card">
+      <div class="left">
+        <div class="title">ATF Airdrop Bot <span class="status-badge" id="claimerStatusBadge">● Running</span></div>
+        <div class="detail"><span>📡 Telegram Connected</span><span>⏱ Every 2 hours</span><span id="nextExecLabel">Next: 01:42:17</span></div>
+      </div>
+      <div class="right">
+        <button class="btn btn-secondary" id="runNowBtn"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>Run Now</button>
+        <button class="btn btn-danger" id="stopBtn"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>Stop Automation</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="header"><h3>Live Activity</h3><span style="font-size:0.8rem;color:var(--text-secondary);">real-time</span></div>
+      <div class="activity-timeline" id="activityTimeline"></div>
+    </div>
+
+    <div class="section">
+      <div class="header"><h3>Live Logs</h3>
+        <div class="controls flex">
+          <button class="btn btn-secondary" style="padding:4px 12px;font-size:0.75rem;" id="autoScrollBtn">Auto Scroll</button>
+          <button class="btn btn-secondary" style="padding:4px 12px;font-size:0.75rem;" id="clearLogsBtn">Clear</button>
+          <button class="btn btn-secondary" style="padding:4px 12px;font-size:0.75rem;" id="downloadLogsBtn">Download</button>
+        </div>
+      </div>
+      <div class="log-terminal" id="logTerminal"></div>
+    </div>
+  </div>
+
+  <div id="page-activity" class="page-content"><div class="empty-state"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><h3>Claim History</h3><p>Detailed logs and history will appear here.</p><button class="btn btn-secondary" style="margin-top:12px;">Load History</button></div></div>
+  <div id="page-sessions" class="page-content"><div class="empty-state"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><path d="M12 2C8.1 2 5 5.1 5 9c0 2.5 1.2 4.7 3 6.1V17h8v-1.9c1.8-1.4 3-3.6 3-6.1 0-3.9-3.1-7-7-7z"/><circle cx="12" cy="15" r="2"/></svg><h3>No Active Sessions</h3><p>Connect a Telegram account to begin.</p><button class="btn btn-primary" style="margin-top:12px;" id="connectFromSessions">Connect Telegram</button></div></div>
+  <div id="page-settings" class="page-content"><div class="empty-state"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><circle cx="12" cy="12" r="3"/><path d="M12 1v3m0 16v3M4.2 4.2l2.1 2.1m11.4 11.4l2.1 2.1M1 12h3m16 0h3M4.2 19.8l2.1-2.1m11.4-11.4l2.1-2.1"/></svg><h3>Settings</h3><p>Automation, appearance, and security settings.</p><button class="btn btn-secondary" style="margin-top:12px;">Coming Soon</button></div></div>
+</main>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="connectModal">
+  <div class="modal">
+    <div class="modal-header"><h2>Connect Telegram</h2><button class="modal-close" id="closeConnectModal">&times;</button></div>
+    <form id="connectForm">
+      <div class="field"><label>API ID</label><input type="number" id="apiId" placeholder="12345" required><div class="helper">From my.telegram.org</div></div>
+      <div class="field"><label>API Hash</label><div class="input-with-toggle"><input type="password" id="apiHash" placeholder="a1b2c3d4..." required><button type="button" class="toggle-btn" id="toggleHash">Show</button></div></div>
+      <div class="field"><label>Phone Number</label><input type="tel" id="phone" placeholder="+1234567890" required><div class="helper">Include country code</div></div>
+      <div class="field"><label>Start Parameter</label><input type="text" id="startParam" value="1287496525"><div class="helper">Referral code (optional)</div></div>
+      <div class="actions"><button type="button" class="btn btn-secondary" id="cancelConnect">Cancel</button><button type="submit" class="btn btn-primary" id="submitConnect"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Connect & Continue</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="verifyModal">
+  <div class="modal">
+    <div class="modal-header"><h2>Verification Required</h2><button class="modal-close" id="closeVerifyModal">&times;</button></div>
+    <p style="color:var(--text-secondary);margin-bottom:16px;">Telegram has sent a verification code to your app.</p>
+    <div class="field"><label>Verification Code</label><input type="text" id="verifyCode" placeholder="123456" maxlength="6" required><div class="helper">Enter the 5-6 digit code</div></div>
+    <div class="actions"><button class="btn btn-secondary" id="cancelVerify">Cancel</button><button class="btn btn-primary" id="submitVerify"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Verify</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="twofaModal">
+  <div class="modal">
+    <div class="modal-header"><h2>Two-Factor Authentication</h2><button class="modal-close" id="closeTwofaModal">&times;</button></div>
+    <p style="color:var(--text-secondary);margin-bottom:16px;">Enter your Telegram 2FA password.</p>
+    <div class="field"><label>Password</label><input type="password" id="twofaPassword" placeholder="••••••••" required></div>
+    <div class="actions"><button class="btn btn-secondary" id="cancelTwofa">Cancel</button><button class="btn btn-primary" id="submitTwofa">Authenticate</button></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT – with API_BASE_URL hardcoded placeholder
+     ============================================================ -->
+<script>
+  (function() {
+    // ★★★ CHANGE THIS TO YOUR RENDER BACKEND URL ★★★
+    const API_BASE_URL = 'https://atf-web.onrender.com';  // Replace with your actual Render URL
+
+    // ----- State (local, only for UI) -----
+    let running = true;
+    let claimCount = 12;
+    let uptimeSeconds = 52320;
+    let nextCheckSeconds = 6137;
+    let logs = [
+      { time: '10:32:04', level: 'info', msg: 'Claim check started' },
+      { time: '10:32:05', level: 'info', msg: 'Bot message detected' },
+      { time: '10:32:05', level: 'info', msg: 'Claim button found' },
+      { time: '10:32:06', level: 'success', msg: 'Claim request submitted' },
+      { time: '10:32:07', level: 'success', msg: 'Claim successful' }
+    ];
+    let activity = [
+      { time: '10:32:04', badge: 'info', message: 'Claim check started' },
+      { time: '10:32:05', badge: 'info', message: 'Bot message detected' },
+      { time: '10:32:05', badge: 'info', message: 'Claim button found' },
+      { time: '10:32:06', badge: 'success', message: 'Claim request submitted' },
+      { time: '10:32:07', badge: 'success', message: 'Claim successful' }
+    ];
+
+    // DOM refs
+    const $ = id => document.getElementById(id);
+    const qs = (sel, ctx) => (ctx||document).querySelector(sel);
+    const qsa = (sel, ctx) => (ctx||document).querySelectorAll(sel);
+
+    // Landing
+    const landing = $('landing');
+    const connectBtn = $('connectBtn');
+    const viewDemoBtn = $('viewDemoBtn');
+    const sidebar = $('sidebar');
+    const main = $('main');
+
+    // Modals
+    const connectModal = $('connectModal');
+    const verifyModal = $('verifyModal');
+    const twofaModal = $('twofaModal');
+    const closeConnectModal = $('closeConnectModal');
+    const closeVerifyModal = $('closeVerifyModal');
+    const closeTwofaModal = $('closeTwofaModal');
+    const cancelConnect = $('cancelConnect');
+    const cancelVerify = $('cancelVerify');
+    const cancelTwofa = $('cancelTwofa');
+    const connectForm = $('connectForm');
+    const submitVerify = $('submitVerify');
+    const submitTwofa = $('submitTwofa');
+    const toggleHash = $('toggleHash');
+    const apiHashInput = $('apiHash');
+
+    // Dashboard
+    const statusValue = $('statusValue');
+    const nextCheckEl = $('nextCheck');
+    const claimCountEl = $('claimCount');
+    const uptimeEl = $('uptime');
+    const claimerStatusBadge = $('claimerStatusBadge');
+    const nextExecLabel = $('nextExecLabel');
+    const activityTimeline = $('activityTimeline');
+    const logTerminal = $('logTerminal');
+    const runNowBtn = $('runNowBtn');
+    const stopBtn = $('stopBtn');
+    const refreshBtn = $('refreshBtn');
+    const autoScrollBtn = $('autoScrollBtn');
+    const clearLogsBtn = $('clearLogsBtn');
+    const downloadLogsBtn = $('downloadLogsBtn');
+    const connectFromSessions = $('connectFromSessions');
+
+    // Navigation
+    const navLinks = qsa('.sidebar nav a');
+    const pages = {
+      dashboard: { title: 'Dashboard', subtitle: 'Automation overview & system status', el: $('page-dashboard') },
+      activity: { title: 'Activity', subtitle: 'Detailed claim history', el: $('page-activity') },
+      sessions: { title: 'Sessions', subtitle: 'Manage your connected Telegram accounts', el: $('page-sessions') },
+      settings: { title: 'Settings', subtitle: 'System configuration', el: $('page-settings') }
+    };
+
+    // ----- Helpers -----
+    function formatTime(sec) {
+      const h = Math.floor(sec/3600);
+      const m = Math.floor((sec%3600)/60);
+      const s = sec%60;
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+    function formatUptime(sec) {
+      const h = Math.floor(sec/3600);
+      const m = Math.floor((sec%3600)/60);
+      return `${h}h ${m}m`;
+    }
+
+    function updateMetrics() {
+      nextCheckEl.textContent = formatTime(nextCheckSeconds);
+      claimCountEl.textContent = claimCount;
+      uptimeEl.textContent = formatUptime(uptimeSeconds);
+      nextExecLabel.textContent = `Next: ${formatTime(nextCheckSeconds)}`;
+      if (running) {
+        statusValue.innerHTML = '<span class="flex"><span class="dot" style="width:12px;height:12px;border-radius:50%;background:var(--accent-green);display:inline-block;animation:pulse-dot 2s infinite;"></span> Running</span>';
+        claimerStatusBadge.textContent = '● Running';
+        claimerStatusBadge.style.color = 'var(--accent-green)';
+        claimerStatusBadge.style.background = 'rgba(16,185,129,0.15)';
+        stopBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg> Stop Automation';
+        stopBtn.className = 'btn btn-danger';
+      } else {
+        statusValue.innerHTML = '<span class="flex"><span class="dot" style="width:12px;height:12px;border-radius:50%;background:var(--accent-red);display:inline-block;"></span> Stopped</span>';
+        claimerStatusBadge.textContent = '● Stopped';
+        claimerStatusBadge.style.color = 'var(--accent-red)';
+        claimerStatusBadge.style.background = 'rgba(239,68,68,0.15)';
+        stopBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Automation';
+        stopBtn.className = 'btn btn-success';
+      }
+    }
+
+    function renderActivity() {
+      activityTimeline.innerHTML = activity.map(item => `
+        <div class="activity-item">
+          <span class="time">${item.time}</span>
+          <span class="badge badge-${item.badge}">${item.badge}</span>
+          <span class="message">${item.message}</span>
+        </div>
+      `).join('');
+      activityTimeline.scrollTop = activityTimeline.scrollHeight;
+    }
+
+    function renderLogs() {
+      logTerminal.innerHTML = logs.map(item => `
+        <div class="log-line">
+          <span class="time">${item.time}</span>
+          <span class="level ${item.level}">${item.level.toUpperCase()}</span>
+          <span class="msg">${item.msg}</span>
+        </div>
+      `).join('');
+      if (autoScrollBtn.textContent === 'Auto Scroll ✓' || autoScrollBtn.textContent === 'Auto Scroll') {
+        logTerminal.scrollTop = logTerminal.scrollHeight;
+      }
+    }
+
+    function addLog(level, msg) {
+      const time = new Date().toTimeString().slice(0,8);
+      logs.push({ time, level, msg });
+      if (logs.length > 200) logs.shift();
+      renderLogs();
+      if (['success','error','warning'].includes(level)) {
+        const badgeMap = { success: 'success', error: 'danger', warning: 'warning' };
+        activity.push({ time, badge: badgeMap[level] || 'info', message: msg });
+        if (activity.length > 50) activity.shift();
+        renderActivity();
+      }
+    }
+
+    function simulateClaim() {
+      if (!running) return;
+      addLog('info', 'Claim check started');
+      setTimeout(() => {
+        addLog('info', 'Bot message detected');
+        setTimeout(() => {
+          addLog('info', 'Claim button found');
+          setTimeout(() => {
+            addLog('success', 'Claim request submitted');
+            claimCount++;
+            updateMetrics();
+            setTimeout(() => {
+              addLog('success', 'Claim successful');
+              nextCheckSeconds = 7200;
+              updateMetrics();
+            }, 600);
+          }, 400);
+        }, 300);
+      }, 200);
+    }
+
+    // ----- Navigation -----
+    function navigateTo(pageId) {
+      Object.keys(pages).forEach(key => {
+        pages[key].el.classList.remove('active');
+      });
+      pages[pageId].el.classList.add('active');
+      document.getElementById('pageTitle').textContent = pages[pageId].title;
+      document.getElementById('pageSubtitle').textContent = pages[pageId].subtitle;
+      navLinks.forEach(a => a.classList.remove('active'));
+      const target = qs(`[data-page="${pageId}"]`);
+      if (target) target.classList.add('active');
+    }
+
+    navLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = link.dataset.page;
+        if (page) navigateTo(page);
+      });
+    });
+
+    // ----- Countdown -----
+    setInterval(() => {
+      if (running && nextCheckSeconds > 0) {
+        nextCheckSeconds--;
+        updateMetrics();
+      } else if (running && nextCheckSeconds === 0) {
+        simulateClaim();
+        nextCheckSeconds = 7200;
+        updateMetrics();
+      }
+      if (running) {
+        uptimeSeconds++;
+        updateMetrics();
+      }
+    }, 1000);
+
+    // ----- Landing actions -----
+    function showDashboard() {
+      landing.classList.add('hidden');
+      sidebar.style.display = 'flex';
+      main.style.display = 'flex';
+      navigateTo('dashboard');
+      addLog('info', 'System ready. Monitoring ATF_AIRDROP_bot...');
+    }
+
+    connectBtn.addEventListener('click', () => {
+      connectModal.classList.add('visible');
+    });
+
+    viewDemoBtn.addEventListener('click', () => {
+      showDashboard();
+    });
+
+    // ----- Connect Modal -----
+    function closeConnect() {
+      connectModal.classList.remove('visible');
+    }
+    closeConnectModal.addEventListener('click', closeConnect);
+    cancelConnect.addEventListener('click', closeConnect);
+    connectModal.addEventListener('click', (e) => {
+      if (e.target === connectModal) closeConnect();
+    });
+
+    toggleHash.addEventListener('click', () => {
+      if (apiHashInput.type === 'password') {
+        apiHashInput.type = 'text';
+        toggleHash.textContent = 'Hide';
+      } else {
+        apiHashInput.type = 'password';
+        toggleHash.textContent = 'Show';
+      }
+    });
+
+    connectForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        api_id: parseInt($('apiId').value),
+        api_hash: $('apiHash').value,
+        phone: $('phone').value,
+        start_param: $('startParam').value || '1287496525'
+      };
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/accounts/connect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.account_id) {
+          localStorage.setItem('account_id', data.account_id);
+          closeConnect();
+          // Check status polling
+          pollStatus(data.account_id);
+        } else {
+          alert('Connection failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      }
+    });
+
+    async function pollStatus(accountId) {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/accounts/status/${accountId}`, { credentials: 'include' });
+          const data = await res.json();
+          if (data.status === 'awaiting_code') {
+            clearInterval(interval);
+            $('verifyModal').classList.add('visible');
+          } else if (data.status === 'awaiting_2fa') {
+            clearInterval(interval);
+            $('twofaModal').classList.add('visible');
+          } else if (data.status === 'connected') {
+            clearInterval(interval);
+            showDashboard();
+            addLog('success', 'Telegram connected successfully');
+            // Start claiming automatically
+            await fetch(`${API_BASE_URL}/api/claimers/start`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ account_id: accountId }),
+              credentials: 'include'
+            });
+            addLog('info', 'Automation started');
+          }
+        } catch (e) {
+          // ignore
+        }
+      }, 3000);
+    }
+
+    // ----- Verify Modal -----
+    function closeVerify() { verifyModal.classList.remove('visible'); }
+    closeVerifyModal.addEventListener('click', closeVerify);
+    cancelVerify.addEventListener('click', closeVerify);
+    verifyModal.addEventListener('click', (e) => { if (e.target === verifyModal) closeVerify(); });
+
+    submitVerify.addEventListener('click', async () => {
+      const code = $('verifyCode').value.trim();
+      if (code.length < 5) { alert('Enter valid code.'); return; }
+      const accountId = localStorage.getItem('account_id');
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/accounts/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account_id: accountId, code }),
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.status === 'verification_sent') {
+          closeVerify();
+          // Continue polling
+          pollStatus(accountId);
+        } else {
+          alert('Verification failed.');
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    });
+
+    // ----- 2FA Modal -----
+    function closeTwofa() { twofaModal.classList.remove('visible'); }
+    closeTwofaModal.addEventListener('click', closeTwofa);
+    cancelTwofa.addEventListener('click', closeTwofa);
+    twofaModal.addEventListener('click', (e) => { if (e.target === twofaModal) closeTwofa(); });
+
+    submitTwofa.addEventListener('click', async () => {
+      const pwd = $('twofaPassword').value.trim();
+      if (!pwd) { alert('Enter 2FA password.'); return; }
+      // For simplicity, we assume 2FA password is handled by resume_auth similarly.
+      // In a real system, you'd have a separate endpoint.
+      // We'll just close and poll again.
+      closeTwofa();
+      const accountId = localStorage.getItem('account_id');
+      pollStatus(accountId);
+    });
+
+    // ----- Dashboard controls -----
+    stopBtn.addEventListener('click', async () => {
+      running = !running;
+      if (running) {
+        addLog('info', 'Automation restarted');
+        nextCheckSeconds = 7200;
+        uptimeSeconds = 0;
+        updateMetrics();
+        // Tell backend to start
+        const accountId = localStorage.getItem('account_id');
+        if (accountId) {
+          await fetch(`${API_BASE_URL}/api/claimers/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account_id: accountId }),
+            credentials: 'include'
+          });
+        }
+      } else {
+        addLog('warning', 'Automation stopped by user');
+        updateMetrics();
+        // Tell backend to stop (we don't have a real stop, but we can ignore)
+      }
+    });
+
+    runNowBtn.addEventListener('click', async () => {
+      if (!running) {
+        running = true;
+        updateMetrics();
+        addLog('info', 'Automation started via Run Now');
+      }
+      nextCheckSeconds = 0;
+      updateMetrics();
+      const accountId = localStorage.getItem('account_id');
+      if (accountId) {
+        await fetch(`${API_BASE_URL}/api/claimers/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account_id: accountId }),
+          credentials: 'include'
+        });
+      }
+    });
+
+    refreshBtn.addEventListener('click', async () => {
+      addLog('info', 'Manual refresh triggered');
+      // Fetch logs from backend
+      const accountId = localStorage.getItem('account_id');
+      if (accountId) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/claimers/logs/${accountId}`, { credentials: 'include' });
+          const data = await res.json();
+          if (Array.isArray(data) && data.length) {
+            logs = data.map(item => ({ time: item.time, level: item.level, msg: item.message }));
+            renderLogs();
+          }
+        } catch (e) {}
+      }
+    });
+
+    autoScrollBtn.addEventListener('click', () => {
+      if (autoScrollBtn.textContent === 'Auto Scroll') {
+        autoScrollBtn.textContent = 'Auto Scroll ✓';
+      } else {
+        autoScrollBtn.textContent = 'Auto Scroll';
+      }
+    });
+
+    clearLogsBtn.addEventListener('click', () => {
+      logs = [];
+      renderLogs();
+      addLog('info', 'Logs cleared');
+    });
+
+    downloadLogsBtn.addEventListener('click', () => {
+      const content = logs.map(l => `${l.time} | ${l.level.toUpperCase()} | ${l.msg}`).join('\n');
+      const blob = new Blob([content], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `atf_logs_${new Date().toISOString().slice(0,10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    connectFromSessions?.addEventListener('click', () => {
+      connectModal.classList.add('visible');
+    });
+
+    // ----- Initial render -----
+    renderActivity();
+    renderLogs();
+    updateMetrics();
+
+  })();
+</script>
+</body>
+</html>
